@@ -6,12 +6,15 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"./models"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/joho/godotenv"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func main() {
@@ -47,11 +50,35 @@ func main() {
 			errorResponse(w, http.StatusBadRequest, err.Error())
 		}
 
+		user.Password, _ = GenerateHash(user.Password)
+		token, _ := GenerateToken(user.Name)
+
 		if err := db.Create(&user).Error; err != nil {
 			errorResponse(w, http.StatusInternalServerError, err.Error())
 		}
 
+		cookie := http.Cookie{Name: "token", Value: token}
+		http.SetCookie(w, &cookie)
 		toResponse(w, 200, user)
+	}).Methods("POST")
+
+	r.HandleFunc("/session", func(w http.ResponseWriter, r *http.Request) {
+		user := models.User{}
+
+		decoder := json.NewDecoder(r.Body)
+		err := decoder.Decode(&user)
+		if err != nil {
+			errorResponse(w, http.StatusBadRequest, err.Error())
+		}
+
+		if err := db.Find(&user).Error; err != nil {
+			errorResponse(w, http.StatusInternalServerError, err.Error())
+		}
+
+		token, _ := GenerateToken(user.Name)
+		cookie := http.Cookie{Name: "token", Value: token}
+		http.SetCookie(w, &cookie)
+
 	}).Methods("POST")
 
 	_ = http.ListenAndServe(":8080", r)
@@ -72,4 +99,27 @@ func toResponse(w http.ResponseWriter, responseCode int, responseJSON interface{
 
 func errorResponse(w http.ResponseWriter, responseCode int, error string) {
 	toResponse(w, responseCode, map[string]string{"error": error})
+}
+
+func GenerateHash(password string) (string, error) {
+	bytePassword := []byte(password)
+
+	hash, err := bcrypt.GenerateFromPassword(bytePassword, bcrypt.MinCost)
+
+	return string(hash), err
+}
+
+func GenerateToken(username string) (string, error) {
+	secretKey := []byte(os.Getenv("SECRET_KEY"))
+
+	claims := &jwt.StandardClaims{
+		ExpiresAt: time.Now().Unix() + 86400,
+		IssuedAt:  time.Now().Unix(),
+		Subject:   username,
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	ss, err := token.SignedString(secretKey)
+
+	return ss, err
 }
