@@ -71,13 +71,21 @@ func main() {
 			errorResponse(w, http.StatusBadRequest, err.Error())
 		}
 
-		if err := db.Find(&user).Error; err != nil {
-			errorResponse(w, http.StatusInternalServerError, err.Error())
+		userFromDb := GetUser(db, user.Name, w)
+		if userFromDb == nil {
+			return
 		}
 
-		token, _ := GenerateToken(user.Name)
-		cookie := http.Cookie{Name: "token", Value: token}
-		http.SetCookie(w, &cookie)
+		match := CheckPasswordHash(user.Password, userFromDb.Password)
+
+		if match == true {
+			token, _ := GenerateToken(user.Name)
+			cookie := http.Cookie{Name: "token", Value: token}
+			http.SetCookie(w, &cookie)
+			toResponse(w, 200, map[string]string{"result": "success"})
+		} else {
+			errorResponse(w, 200, "Incorrect username or password")
+		}
 
 	}).Methods("POST")
 
@@ -127,4 +135,13 @@ func GenerateToken(username string) (string, error) {
 func CheckPasswordHash(password, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
+}
+
+func GetUser(db *gorm.DB, username string, w http.ResponseWriter) *models.User {
+	user := models.User{}
+	if err := db.Find(&user, models.User{Name: username}).Error; err != nil {
+		errorResponse(w, 200, "Incorrect username or password")
+		return nil
+	}
+	return &user
 }
