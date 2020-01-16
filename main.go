@@ -89,6 +89,12 @@ func main() {
 
 	}).Methods("POST")
 
+	r.HandleFunc("/session", func(w http.ResponseWriter, r *http.Request) {
+		cookie := http.Cookie{Name: "token", MaxAge: -1}
+		http.SetCookie(w, &cookie)
+		toResponse(w, 200, map[string]string{"result": "success"})
+	}).Methods("DELETE")
+
 	_ = http.ListenAndServe(":8080", r)
 
 }
