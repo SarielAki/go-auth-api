@@ -80,7 +80,7 @@ func main() {
 
 		if match == true {
 			token, _ := GenerateToken(user.Name)
-			cookie := http.Cookie{Name: "token", Value: token}
+			cookie := http.Cookie{Name: "token", Value: token, Expires: time.Now().Add(time.Hour * 3)}
 			http.SetCookie(w, &cookie)
 			toResponse(w, 200, map[string]string{"result": "success"})
 		} else {
