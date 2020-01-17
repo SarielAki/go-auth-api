@@ -59,7 +59,7 @@ func main() {
 
 		cookie := http.Cookie{Name: "token", Value: token}
 		http.SetCookie(w, &cookie)
-		toResponse(w, 200, user)
+		toResponse(w, 200, map[string]string{"result": "success"})
 	}).Methods("POST")
 
 	r.HandleFunc("/session", func(w http.ResponseWriter, r *http.Request) {
