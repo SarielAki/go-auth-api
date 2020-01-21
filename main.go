@@ -63,6 +63,28 @@ func main() {
 	}).Methods("POST")
 
 	r.HandleFunc("/session", func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("token")
+		if err != nil {
+			errorResponse(w, 401, "Unauthorized")
+		}
+
+		token, err := jwt.Parse(cookie.Value, func(token *jwt.Token) (interface{}, error) {
+			if token != nil {
+			}
+			return []byte(os.Getenv("SECRET_KEY")), nil
+		})
+
+		if token != nil {
+			if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+				toResponse(w, 200, claims)
+			}
+		} else {
+			errorResponse(w, 401, "Unauthorized")
+		}
+
+	}).Methods("GET")
+
+	r.HandleFunc("/session", func(w http.ResponseWriter, r *http.Request) {
 		user := models.User{}
 
 		decoder := json.NewDecoder(r.Body)
@@ -80,7 +102,7 @@ func main() {
 
 		if match == true {
 			token, _ := GenerateToken(user.Name)
-			cookie := http.Cookie{Name: "token", Value: token, Expires: time.Now().Add(time.Hour * 3)}
+			cookie := http.Cookie{Name: "token", Value: token}
 			http.SetCookie(w, &cookie)
 			toResponse(w, 200, map[string]string{"result": "success"})
 		} else {
