@@ -66,20 +66,20 @@ func main() {
 		cookie, err := r.Cookie("token")
 		if err != nil {
 			errorResponse(w, 401, "Unauthorized")
-		}
-
-		token, err := jwt.Parse(cookie.Value, func(token *jwt.Token) (interface{}, error) {
-			if token != nil {
-			}
-			return []byte(os.Getenv("SECRET_KEY")), nil
-		})
-
-		if token != nil {
-			if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-				toResponse(w, 200, claims)
-			}
 		} else {
-			errorResponse(w, 401, "Unauthorized")
+			token, err := jwt.Parse(cookie.Value, func(token *jwt.Token) (interface{}, error) {
+				return []byte(os.Getenv("SECRET_KEY")), nil
+			})
+
+			if err != nil {
+				errorResponse(w, 401, "Unauthorized")
+			}
+
+			if token != nil {
+				if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+					toResponse(w, 200, claims)
+				}
+			}
 		}
 
 	}).Methods("GET")
